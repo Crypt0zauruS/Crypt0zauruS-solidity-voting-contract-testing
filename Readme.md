@@ -19,7 +19,7 @@ Dans ce contrat de vote, les utilisateurs peuvent enregistrer des propositions, 
 
 - expectRevert() : vérifie si la transaction effectuée déclenche une réversion et s'assure que le message d'erreur correspond au message fourni.
 - expectEvent() : vérifie si un événement a été émis lors de l'exécution de la fonction.
-- BN : Aide javascript à gérer les nombres entiers de grande taille, comme les uint de solidity.
+- BN : permet à javascript de gérer les uint de Solidity, qui sont codés en 256 bits.
 
 ## **Hooks**
 
@@ -28,10 +28,10 @@ Dans ce contrat de vote, les utilisateurs peuvent enregistrer des propositions, 
 
 ## **Variables**
 
-Voting : le contrat à tester.
-owner, voter1, voter2, voter3, voter4 : les comptes Ganache utilisés pour le test.
-winningProposalID : stocke l'ID de la proposition gagnante.
-instance : instance du contrat Voting.
+- Voting : le contrat à tester.
+- owner, voter1, voter2, voter3, voter4 : les comptes Ganache utilisés pour le test.
+- winningProposalID : stocke l'ID de la proposition gagnante.
+- instance : instance du contrat Voting.
 
 ## **Tests**
 
