@@ -16,15 +16,7 @@ contract("Voting", (accounts) => {
   console.log(owner, voter1, voter2, voter3, voter4);
 
   // tests
-  /******************************* Check des variables au commencement ************************************/
-  describe("Voting variables at the beginning", () => {
-    it("should have winningProposalID equal to 0", async () => {
-      // On vérifie que winningProposalID est à 0
-      // const winningProposalID = await instance.winningProposalID(); est moins optimisé en gas
-      const winningProposalID = await instance.winningProposalID.call();
-      expect(winningProposalID).to.be.bignumber.equal(new BN(0));
-    });
-  });
+  // On n'a pas besoin d'utiliser call() pour les fonctions view telles que getVoter() et getOneProposal()
 
   /******************************* Check du Workflow au commencement ************************************/
 
@@ -45,6 +37,13 @@ contract("Voting", (accounts) => {
         previousStatus: new BN(0),
         newStatus: new BN(1),
       });
+    });
+
+    it("should show winningProposalID equal to 0 at the beginning", async () => {
+      // On vérifie que winningProposalID est à 0
+      // const winningProposalID = await instance.winningProposalID(); est moins optimisé en gas
+      const winningProposalID = await instance.winningProposalID.call();
+      expect(winningProposalID).to.be.bignumber.equal(new BN(0));
     });
   });
 
@@ -118,7 +117,26 @@ contract("Voting", (accounts) => {
       );
     });
 
-    it("should register a new voter", async () => {
+    it("should confirm a voter can check he is registered after owner added it", async () => {
+      // On enregistre voter1
+      await instance.addVoter(voter1, { from: owner });
+      // On vérifie que voter1 est bien enregistré
+      const voter = await instance.getVoter(voter1, { from: voter1 });
+      expect(voter.isRegistered).to.be.true;
+    });
+
+    it("should prevent non voter to check infos about a voter", async () => {
+      // rappel: on teste avec owner, qui n'est pas un votant au cours de ce test
+      // On enregistre voter1
+      await instance.addVoter(voter1, { from: owner });
+      // On vérifie que l'owner ne peut pas vérifier les infos d'un votant
+      await expectRevert(
+        instance.getVoter(voter1, { from: owner }),
+        "You're not a voter"
+      );
+    });
+
+    it("should emit an event after a new voter is registered", async () => {
       // On véfifie que le statut du workflow est à 0
       const status = await instance.workflowStatus.call();
       expect(status).to.be.bignumber.equal(new BN(0));
@@ -133,7 +151,7 @@ contract("Voting", (accounts) => {
       await instance.addVoter(voter1, { from: owner });
       // On vérifie que l'enregistrement d'un votant déjà enregistré échoue
       await expectRevert(
-        instance.addVoter(voter1, { from: owner }),
+        instance.addVoter.call(voter1, { from: owner }),
         "Already registered"
       );
     });
@@ -150,12 +168,50 @@ contract("Voting", (accounts) => {
     it("should not add a new proposal if the proposal phase has not started yet", async () => {
       // On vérifie que l'ajout d'une proposition avant le début de la phase d'enregistrement échoue
       await expectRevert(
-        instance.addProposal("Proposal 1", { from: voter1 }),
+        instance.addProposal.call("Proposal 1", { from: voter1 }),
         "Proposals are not allowed yet"
       );
     });
 
-    it("should add a new proposal", async () => {
+    it("should confirm proposal 0 is Genesis", async () => {
+      // On démarre la phase d'enregistrement des propositions
+      await instance.startProposalsRegistering({ from: owner });
+      // On vérifie que la proposition 0 est bien la proposition Genesis
+      const proposal = await instance.getOneProposal(0, { from: voter1 });
+      expect(proposal.description).to.be.equal("GENESIS");
+    });
+
+    it("should not add a new proposal if the caller is not a registered voter", async () => {
+      // On démarre la phase d'enregistrement des propositions
+      await instance.startProposalsRegistering({ from: owner });
+      // On vérifie que l'ajout d'une proposition par un utilisateur non enregistré échoue
+      await expectRevert(
+        instance.addProposal.call("Proposal 1", { from: voter2 }),
+        "You're not a voter"
+      );
+    });
+
+    it("should not add a new proposal if the proposal is empty", async () => {
+      // On démarre la phase d'enregistrement des propositions
+      await instance.startProposalsRegistering({ from: owner });
+      // On vérifie que l'ajout d'une proposition vide échoue
+      await expectRevert(
+        instance.addProposal.call("", { from: voter1 }),
+        "Vous ne pouvez pas ne rien proposer"
+      );
+    });
+
+    it("should confirm a proposal has been registered after a voter added it", async () => {
+      // On démarre la phase d'enregistrement des propositions
+      await instance.startProposalsRegistering({ from: owner });
+      // On ajoute une proposition
+      await instance.addProposal("Proposal 1", { from: voter1 });
+      // On vérifie que la proposition a bien été enregistrée
+      const proposal = await instance.getOneProposal(1, { from: voter1 });
+      expect(proposal.description).to.equal("Proposal 1");
+    });
+
+    it("should emit an event after a new proposal is registered", async () => {
       // On démarre la phase d'enregistrement des propositions
       await instance.startProposalsRegistering({ from: owner });
       // On vérifie que l'ajout d'une proposition après le début de la phase d'enregistrement réussit
@@ -163,6 +219,19 @@ contract("Voting", (accounts) => {
         from: voter1,
       });
       expectEvent.inLogs(logs, "ProposalRegistered");
+    });
+
+    it("should prevent non voter to check infos about a proposal", async () => {
+      // rappel: on teste avec owner, qui n'est pas un votant au cours de ce test
+      // On démarre la phase d'enregistrement des propositions
+      await instance.startProposalsRegistering({ from: owner });
+      // On ajoute une proposition
+      await instance.addProposal.call("Proposal 1", { from: voter1 });
+      // On vérifie que l'owner ne peut pas vérifier les infos d'une proposition
+      await expectRevert(
+        instance.getOneProposal(1, { from: owner }),
+        "You're not a voter"
+      );
     });
 
     it("should not add a new proposal if the proposal phase has ended", async () => {
@@ -174,7 +243,7 @@ contract("Voting", (accounts) => {
       await instance.endProposalsRegistering({ from: owner });
       // On vérifie que l'ajout d'une proposition après la fin de la phase d'enregistrement échoue
       await expectRevert(
-        instance.addProposal("Proposal 2", { from: voter1 }),
+        instance.addProposal.call("Proposal 2", { from: voter1 }),
         "Proposals are not allowed yet"
       );
     });
@@ -197,12 +266,21 @@ contract("Voting", (accounts) => {
     it("should not vote if the voting phase has not started yet", async () => {
       // On vérifie que le vote avant le début de la phase de vote échoue
       await expectRevert(
-        instance.setVote(0, { from: voter1 }),
+        instance.setVote.call(0, { from: voter1 }),
         "Voting session havent started yet"
       );
     });
 
-    it("should succeed to vote", async () => {
+    it("should succeed to vote if the voting phase has started", async () => {
+      // On démarre la phase de vote
+      await instance.startVotingSession({ from: owner });
+      // On vérifie que le vote après le début de la phase de vote réussit
+      await instance.setVote(0, { from: voter1 });
+      const proposal = await instance.getOneProposal(0, { from: voter1 });
+      expect(proposal.voteCount).to.be.bignumber.equal(new BN(1));
+    });
+
+    it("should emit an event after vote", async () => {
       // On démarre la phase de vote
       await instance.startVotingSession({ from: owner });
       // On vérifie que le vote après le début de la phase de vote réussit
@@ -218,7 +296,7 @@ contract("Voting", (accounts) => {
       await instance.startVotingSession({ from: owner });
       // On vérifie que le vote par un votant non enregistré échoue
       await expectRevert(
-        instance.setVote(0, { from: voter2 }),
+        instance.setVote.call(0, { from: voter2 }),
         "You're not a voter"
       );
     });
@@ -232,7 +310,7 @@ contract("Voting", (accounts) => {
       await instance.endVotingSession({ from: owner });
       // On vérifie que le vote après la fin de la phase de vote échoue
       await expectRevert(
-        instance.setVote(0, { from: voter1 }),
+        instance.setVote.call(0, { from: voter1 }),
         "Voting session havent started yet"
       );
     });
@@ -242,7 +320,7 @@ contract("Voting", (accounts) => {
       await instance.startVotingSession({ from: owner });
       // On vérifie que le vote pour une proposal non enregistrée échoue
       await expectRevert(
-        instance.setVote(2, { from: voter1 }),
+        instance.setVote.call(2, { from: voter1 }),
         "Proposal not found"
       );
     });
@@ -254,7 +332,7 @@ contract("Voting", (accounts) => {
       await instance.setVote(0, { from: voter1 });
       // On vérifie que le vote une deuxième fois échoue pour un même votant
       await expectRevert(
-        instance.setVote(0, { from: voter1 }),
+        instance.setVote.call(0, { from: voter1 }),
         "You have already voted"
       );
     });
@@ -264,7 +342,7 @@ contract("Voting", (accounts) => {
       await instance.startVotingSession({ from: owner });
       // On vérifie que le comptage des votes avant la fin de la phase de vote échoue
       await expectRevert(
-        instance.tallyVotes({ from: owner }),
+        instance.tallyVotes.call({ from: owner }),
         "Current status is not voting session ended"
       );
     });
@@ -276,7 +354,7 @@ contract("Voting", (accounts) => {
       await instance.endVotingSession({ from: owner });
       // On vérifie que le comptage des votes par un utilisateur non autorisé échoue
       await expectRevert(
-        instance.tallyVotes({ from: voter1 }),
+        instance.tallyVotes.call({ from: voter1 }),
         "Ownable: caller is not the owner"
       );
     });
@@ -335,7 +413,7 @@ contract("Voting", (accounts) => {
       // On termine la phase de vote
       await instance.endVotingSession({ from: owner });
       // On vérifie que la première proposition est gagnante
-      await instance.tallyVotes({ from: owner });
+      await instance.tallyVotes.call({ from: owner });
       winningProposalID = await instance.winningProposalID.call();
       assert.equal(winningProposalID, 0);
     });
@@ -346,7 +424,7 @@ contract("Voting", (accounts) => {
       // On termine la phase de vote
       await instance.endVotingSession({ from: owner });
       // On vérifie que la première proposition est gagnante
-      await instance.tallyVotes({ from: owner });
+      await instance.tallyVotes.call({ from: owner });
       winningProposalID = await instance.winningProposalID.call();
       assert.equal(winningProposalID, 0);
     });

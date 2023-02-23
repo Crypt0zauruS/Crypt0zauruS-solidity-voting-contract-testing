@@ -1,7 +1,7 @@
 {
   "name": "projet-test-vote",
   "version": "1.0.0",
-  "description": "Tests d'intégration du contrat de Vote",
+  "description": "Tests unitaires du contrat de Vote",
   "main": "truffle-config.js",
   "directories": {
     "test": "test"
@@ -17,8 +17,6 @@
     "eth-gas-reporter": "^0.2.25"
   },
   "devDependencies": {
-    "@openzeppelin/test-helpers": "^0.5.16",
-    "ganache": "^7.7.5",
-    "truffle": "^5.7.7"
+    "@openzeppelin/test-helpers": "^0.5.16"
   }
 }
