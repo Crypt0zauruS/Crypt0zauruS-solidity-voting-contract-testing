@@ -35,7 +35,9 @@ Dans ce contrat de vote, les utilisateurs peuvent enregistrer des propositions, 
 
 ## **Tests**
 
-Ils sont regroupés en 6 parties à l'aide du hook describe():
+- Test préliminaire de déploiement du contrat
+
+Ensuite, les tests sont regroupés en 6 parties à l'aide du hook describe():
 
 - #### **L'état initial du workflow**
 

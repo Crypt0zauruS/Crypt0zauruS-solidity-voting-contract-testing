@@ -8,6 +8,12 @@ contract("Voting", (accounts) => {
   let winningProposalID;
   let instance;
 
+  it("should be deployed", async () => {
+    // On vérifie que le contrat est bien déployé
+    instance = await Voting.deployed();
+    expect(instance).to.exist;
+  });
+
   beforeEach(async () => {
     // On crée une nouvelle instance du contrat avant chaque test
     instance = await Voting.new({ from: owner });

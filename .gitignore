@@ -2,3 +2,5 @@
 .dropboxignore
 .dccache
 /.vscode
+.DS_Store
+/build
